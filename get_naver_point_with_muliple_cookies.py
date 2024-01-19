@@ -70,7 +70,7 @@ class NaverUser(requests.Session):
     # print(response.text)
     data = json.loads(response.text)
 
-    if (data["result"] != None and data["result"]["reward"] and data["result"]["reward"]["balanceAmount"]):
+    if (data["result"] != None and data["result"]["reward"] and data["result"]["reward"]["balanceAmount"] != None):
       return (True, data["result"]["reward"]["balanceAmount"])
 
     #로그인은 정상적으로 성공했는데 금액이 없는경우는 뭘까? 
@@ -120,6 +120,7 @@ def save_visited_campaign_list(visited_campaign_id_list,  visited_campaign_id_fi
 if __name__ == "__main__":
   # 네이버 계정을 여러개 만들어 주자. 
   naver_account_list = []
+  naver_account_list.append(NaverUser(os.environ.get("NAVER_USER_2")))
   naver_account_list.append(NaverUser(os.environ.get("NAVER_USER_1")))
 
   n = None
@@ -128,12 +129,12 @@ if __name__ == "__main__":
   for one_account in naver_account_list:
     if one_account.available:
       ( r, point ) = one_account.get_point()
-      one_account.point = point
       if r: 
         n = one_account
+        one_account.point = point
+        print(f'포인트 변화 확인 {one_account.name}의 기존 포인트 {one_account.point}')
       else: 
-        os.system(f'echo \'{one_account.id}=N\' >> $GITHUB_ENV')
-        send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요.')
+        send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요(P).')
 
 
 
@@ -170,6 +171,7 @@ if __name__ == "__main__":
         if one_account.available:
           r = one_account.get(one_campaign["viewUrl"])
           if r.status_code != 200:
+            send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요(C).')
             one_account.available = False
 
     # 캠페인을 모두 방문했다. 종료.
@@ -181,6 +183,7 @@ if __name__ == "__main__":
         (r, point) = one_account.get_point()
         if r:
           diff = point - one_account.point
+          print(f'포인트 변화 확인 {one_account.name}의 기존 포인트 {one_account.point} / 재 검사 포인트 {point}')
           if diff > 0:
             send_telegram(telegram_channel_id, f'{one_account.name}님 포인트 획득: {diff}')
         
