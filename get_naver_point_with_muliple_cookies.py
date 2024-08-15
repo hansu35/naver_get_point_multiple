@@ -1,6 +1,10 @@
 import requests
 import json
 import os
+from datetime import datetime
+
+db_token = os.environ.get("CLOUD_DB_AUTH_TOKEN")
+db_end_point = os.environ.get("CLOUD_DB_END_POINT")
 
 naver_point_list_url =  "https://new-m.pay.naver.com/api/adreward/list?deviceType=ios&from=ad_list&channelId=pay&collectionId=benefit&category=all&groupId=6259172cb3752f94feb57e47&pageSize=100"
 telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -15,7 +19,7 @@ cookie: 네이버 쿠키, 사실상 이거 만 있으면 된다.
 {
   "id":"id",
   "name": "hansu",
-  "cookie":{},
+  "cookie":{}
 }
 """
 
@@ -96,23 +100,31 @@ def send_telegram(chat_id, massage, ):
     print(r.text)
 
 
+# cloud DB 요청.
+def dbQuery(queryData):
+  r = requests.post(db_end_point, data=json.dumps(queryData), headers={'Content-Type':'application/json', 'Authorization':db_token})
+  if(r.status_code == 200):
+    return json.loads(r.text)
+  else:
+    print(f'디비 요청 에러 {r.status_code} / {r.text}')
+    return None
+
 
 ## 방문기록용 로그 파일관리.
 ## 파일로 기록하는게 맞는건가? 싶긴한데... 말이죠...
-def get_visited_campaign_list(visited_campaign_id_file=campaign_saved_file_name):
+def get_visited_campaign_list():
   try:
-    with open(visited_campaign_id_file, 'r') as file:
-      visited_file = set(file.read().splitlines())
-  except FileNotFoundError:
-    visited_file = set()
+    listData = dbQuery({'query':'query naver_points_ids_logs { naver_points_ids_logs ( limit:1000 order_by: [{check_date:DESC}]) {campaign_id}}'})
+    if(listData != None):
+      visited_list = set(listData["data"]["naver_points_ids_logs"])
+      return visited_list
+  except Exception:
+  	  return set()
 
-  return visited_file
-
-def save_visited_campaign_list(visited_campaign_id_list,  visited_campaign_id_file=campaign_saved_file_name):
-  with open(visited_campaign_id_file, 'w') as file:
-    for url in visited_campaign_id_list:
-      file.write(url + '\n')
-
+def save_visited_campaign_list(visited_campaign_id_list):
+  dump = '['+visited_campaign_id_list[0:-1]+']'
+  dbQuery({'query':'mutation naver_points_ids_logs { insert_naver_points_ids_logs ( objects:'+dump+') {affected_rows returning {rowid}} }'})
+  
 
 
 
@@ -125,6 +137,8 @@ if __name__ == "__main__":
 
   n = None
 
+  today = datetime.today().strftime("%Y-%m-%d")
+
   # 최초로 로그인을 유지시켜 주기 위해서 모두 한번씩 네이버를 방문해준다. 
   for one_account in naver_account_list:
     if one_account.available:
@@ -134,7 +148,7 @@ if __name__ == "__main__":
         one_account.point = point
         print(f'포인트 변화 확인 {one_account.name}의 기존 포인트 {one_account.point}')
       else: 
-        send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요(P).')
+        send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요(최초 로그인유지 확인실패).')
 
 
 
@@ -142,6 +156,7 @@ if __name__ == "__main__":
   # 이제 점검을 시작한다. 
   # 방문 목록을 가져온다. 
   visited_list = get_visited_campaign_list()
+  new_visited_list_str = ""
 
   new_count = 0
   # 새로운 포인트 목록이 있는지 검사한다. 
@@ -164,19 +179,22 @@ if __name__ == "__main__":
       # 아니라면 텔레그램으로 알림을 하나 보내고 방문.
       send_telegram(telegram_channel_id, f'네이버 포인트 \n{one_campaign["title"]} \n링크: {one_campaign["viewUrl"]} \n클릭보상금: {one_campaign["clickRewardAmount"]} \n종료시기: {one_campaign["clickRewardEndAt"]}')
       new_count = new_count + 1
-      visited_list.add(campaign_id)
+      # visited_list.add(campaign_id)
+      new_visited_list_str += '{campaign_id:'+campaign_id+', check_date:"'+today+'"},'
 
       # 모든 네이버 어카운트에서 한번씩 방문한다. 
       for one_account in naver_account_list:
         if one_account.available:
           r = one_account.get(one_campaign["viewUrl"])
           if r.status_code != 200:
-            send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요(C).')
+            send_telegram(telegram_channel_id, f'{one_account.name}님 네이버 로그인 확인 필요(방문이후 포인트 체크 실패).')
             one_account.available = False
 
     # 캠페인을 모두 방문했다. 종료.
     # 방문했던 모든 리스트 새롭게 저장한다. 
-    save_visited_campaign_list(visited_list)
+    if new_count > 0:
+    	save_visited_campaign_list(new_visited_list_str)
+
     # 모든 네이버 어카운트에서 포인트 변화를 확인한다. 
     for one_account in naver_account_list:
       if one_account.available:
@@ -194,17 +212,5 @@ if __name__ == "__main__":
     # 예외가 발생하면 실패로 전달한다. 
     send_telegram(telegram_channel_id, '네이버 포인트 리스트 불러오기 실패')
 
-  os.system(f'echo \'list_count={new_count}\' >> $GITHUB_OUTPUT')
-    
-
-  
-
-
-
-
-
-
-
-
-        
-
+  # os.system(f'echo \'list_count={new_count}\' >> $GITHUB_OUTPUT')
+  os.system(f'echo \'list_count=0\' >> $GITHUB_OUTPUT')
