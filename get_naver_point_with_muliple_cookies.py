@@ -118,8 +118,9 @@ def get_visited_campaign_list():
     if(listData != None):
       visited_list = set(listData["data"]["naver_points_ids_logs"])
       return visited_list
-  except Exception:
-  	  return set()
+  except Exception as e:    
+    print('예외가 발생했습니다.', e):
+  return set()
 
 def save_visited_campaign_list(visited_campaign_id_list):
   dump = '['+visited_campaign_id_list[0:-1]+']'
@@ -156,6 +157,8 @@ if __name__ == "__main__":
   # 이제 점검을 시작한다. 
   # 방문 목록을 가져온다. 
   visited_list = get_visited_campaign_list()
+  print("방문 리스트")
+  print(visited_list)
   new_visited_list_str = ""
 
   new_count = 0
@@ -176,6 +179,7 @@ if __name__ == "__main__":
       campaign_id = one_campaign["campaignId"]
       if campaign_id in visited_list:
         continue
+      print(f' 이캠페인 아이디는 없어서 진행 {campaign_id}')
       # 아니라면 텔레그램으로 알림을 하나 보내고 방문.
       send_telegram(telegram_channel_id, f'네이버 포인트 \n{one_campaign["title"]} \n링크: {one_campaign["viewUrl"]} \n클릭보상금: {one_campaign["clickRewardAmount"]} \n종료시기: {one_campaign["clickRewardEndAt"]}')
       new_count = new_count + 1
