@@ -27,8 +27,8 @@ jobs:
         TELEGRAM_CHAT_ID: ${{secrets.TELEGRAM_CHAT_ID}}
         NAVER_USER_1: ${{secrets.NAVER_USER_1}}
         NAVER_USER_2: ${{secrets.NAVER_USER_2}}
-        USER1: ${{vars.USER1}}
-        USER2: ${{vars.USER2}}
+        CLOUD_DB_AUTH_TOKEN: ${{secrets.CLOUD_DB_AUTH_TOKEN}}
+        CLOUD_DB_END_POINT: ${{secrets.CLOUD_DB_END_POINT}}
       run: |
         # 실행해보자 
         python ./get_naver_point_with_muliple_cookies.py
