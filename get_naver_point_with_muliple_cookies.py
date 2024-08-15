@@ -173,14 +173,14 @@ if __name__ == "__main__":
         continue
 
       # 포인트를 주더라도 방문록록에 있다면 제외.
-      campaign_id = str(one_campaign["campaignId"])
+      campaign_id = one_campaign["campaignId"]
       if campaign_id in visited_list:
         continue
       # 아니라면 텔레그램으로 알림을 하나 보내고 방문.
       send_telegram(telegram_channel_id, f'네이버 포인트 \n{one_campaign["title"]} \n링크: {one_campaign["viewUrl"]} \n클릭보상금: {one_campaign["clickRewardAmount"]} \n종료시기: {one_campaign["clickRewardEndAt"]}')
       new_count = new_count + 1
       # visited_list.add(campaign_id)
-      new_visited_list_str += '{campaign_id:'+campaign_id+', check_date:"'+today+'"},'
+      new_visited_list_str += '{campaign_id:'+str(campaign_id)+', check_date:"'+one_campaign["clickRewardEndAt"]+'"},'
 
       # 모든 네이버 어카운트에서 한번씩 방문한다. 
       for one_account in naver_account_list:
