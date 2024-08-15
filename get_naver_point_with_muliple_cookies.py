@@ -119,7 +119,7 @@ def get_visited_campaign_list():
       visited_list = set(listData["data"]["naver_points_ids_logs"])
       return visited_list
   except Exception as e:    
-    print('예외가 발생했습니다.', e):
+    print('예외가 발생했습니다.', e)
   return set()
 
 def save_visited_campaign_list(visited_campaign_id_list):
