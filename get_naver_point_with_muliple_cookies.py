@@ -102,8 +102,10 @@ def send_telegram(chat_id, massage, ):
 
 # cloud DB 요청.
 def dbQuery(queryData):
+  print(json.dumps(queryData))
   r = requests.post(db_end_point, data=json.dumps(queryData), headers={'Content-Type':'application/json', 'Authorization':db_token})
   if(r.status_code == 200):
+    print(r.text)
     return json.loads(r.text)
   else:
     print(f'디비 요청 에러 {r.status_code} / {r.text}')
