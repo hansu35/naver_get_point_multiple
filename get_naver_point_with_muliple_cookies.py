@@ -102,10 +102,10 @@ def send_telegram(chat_id, massage, ):
 
 # cloud DB 요청.
 def dbQuery(queryData):
-  print(json.dumps(queryData))
+  # print(json.dumps(queryData))
   r = requests.post(db_end_point, data=json.dumps(queryData), headers={'Content-Type':'application/json', 'Authorization':db_token})
   if(r.status_code == 200):
-    print(r.text)
+    # print(r.text)
     return json.loads(r.text)
   else:
     print(f'디비 요청 에러 {r.status_code} / {r.text}')
@@ -118,11 +118,11 @@ def get_visited_campaign_list():
   try:
     listData = dbQuery({'query':'query naver_points_ids_logs { naver_points_ids_logs ( limit:1000 order_by: [{check_date:DESC}]) {campaign_id}}'})
     if(listData != None):
-      visited_list = set(listData["data"]["naver_points_ids_logs"])
+      visited_list = listData["data"]["naver_points_ids_logs"]
       return visited_list
   except Exception as e:    
     print('예외가 발생했습니다.', e)
-  return set()
+  return []
 
 def save_visited_campaign_list(visited_campaign_id_list):
   dump = '['+visited_campaign_id_list[0:-1]+']'
@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
       # 포인트를 주더라도 방문록록에 있다면 제외.
       campaign_id = one_campaign["campaignId"]
-      if campaign_id in visited_list:
+      if any(c.get('campaign_id',0) == campaign_id for c in visited_list):
         continue
       print(f' 이캠페인 아이디는 없어서 진행 {campaign_id}')
       # 아니라면 텔레그램으로 알림을 하나 보내고 방문.
